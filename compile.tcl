@@ -1,0 +1,163 @@
+#!/usr/bin/tclsh
+
+proc indent {str amount} {
+    return [string repeat "\t" $amount]$str
+}
+
+proc style {format } {
+    set output "";
+    foreach c [split $format ""] {
+        set index [string first $c "krgybmcw"];
+        if {[expr $index > -1]} {
+            append output "\033\[[expr 30 + $index]m"
+            continue
+        }
+        
+        set index [string first $c "KRGYBMCW"];
+        if {[expr $index > -1]} {
+            append output "\033\[[40 + $index]m"
+            continue
+        }
+
+        set index [string first [string tolower $c] "losu~"];
+        if {[expr $index > -1]} {
+            append output "\033\[[lindex {1 3 9 4 0} $index]m"
+            continue    
+        }
+    }
+
+    return $output
+}
+
+proc path_concat {args} {
+    return [string trimright [string map {"//" "/"} [join $args ""]] "/"]
+}
+
+set ext_convert {
+    .j2   .html
+    .htm  .html
+
+    .scss .css
+    .sass .css
+
+    .coffee .js
+}
+
+set ext_style {
+    PAGE {
+        color "bl"
+        extensions {.j2 .htm .html}
+    }
+
+    STYLE {
+        color "rl"
+        extensions {.scss .sass .css}
+    }
+
+    SCRIPT {
+        color "yl"
+        extensions {.coffee .js}
+    }
+
+    FOLDER {
+        color "wl"
+    }
+
+    IMAGE {
+        color "ml"
+        extensions {.png .jpeg .qoi .tiff .jpg .webp .svg .gif}
+    }
+
+    VIDEO {
+        color "ml"
+        extensions {.mp4 .mkv}
+    }
+
+    AUDIO {
+        color "ml"
+        extensions {.wav .mp3 .mp2 .ogg .opus .vorbis}
+    }
+
+    UNKNOWN {
+        color "kl"
+        extensions {}
+    }
+}
+
+proc compile {SRC_PATH DEST_PATH INC_PATH {force_compile 0} {depth 0}} {
+    global ext_convert
+    global ext_style
+
+    puts [indent [format "%sFOLDER%s %s -> %s" \
+                [style [dict get [dict get $ext_style FOLDER] color]] \
+                [style "~w"] \
+                $SRC_PATH \
+                $DEST_PATH \
+        ] $depth]
+
+    foreach src [glob $SRC_PATH/*] {
+        set dest [string map [list $SRC_PATH $DEST_PATH {*}$ext_convert] $src];
+        set filename [string map [list $SRC_PATH ""] $src];
+        set file_type "UNKNOWN"
+        set file_style "wl"
+
+        # ! [expr [file isfile dest] && [file exists dest] && [expr [file mtime src] < [file mtime dest] ]]
+
+        if {[file isfile $dest]} {
+            if { [file mtime $src] < [file mtime $dest] } {
+                puts [indent [format "%sIGNORED %s %s" [style kl] [style "~"] $filename] [expr $depth + 1]]
+                continue
+            }
+        }
+
+        dict for {file_type v} $ext_style {
+            if {[dict exists $v extensions]} {
+                if {[lsearch [dict get $v extensions] [file extension $filename]] > -1} {
+                    set file_style [dict get $v color]
+                    break
+                }
+            }
+        }
+
+        if {[file isdirectory $src]} {
+            file mkdir $dest
+            compile $src $dest $INC_PATH $force_compile [expr $depth + 1]
+
+        } else {
+            switch -nocase [file extension $src] {
+                # stylesheets
+                ".sass" {
+                    exec sass $src $dest -I include &
+                }
+
+                ".scss" {
+                    exec scss $src $dest -I include &
+                }
+
+                # pages
+                ".j2" -
+                ".html" -
+                ".htm" {
+                    exec ./yaj2 $src -I $INC_PATH -o $dest &
+                }
+
+                # coffeescript
+                ".coffee" {
+                    exec coffee -cmo $dest $src &
+                }
+
+                default {
+                    exec cp $src $dest
+                }
+            }
+            puts [indent [format "%s$file_type %s %s" [style $file_style] [style "~"] $filename] [expr $depth + 1]]
+        }
+    }
+}
+
+compile {*}$argv
+
+# jinja
+# u?????
+# sass
+# tcl
