@@ -2,15 +2,17 @@
 
 package require Tclx
 
+set WATCHED_DIRS {src include}
+
 proc runCommand {} {
-    puts [exec make compile]
+    puts [exec make]
     return [open |[list python3 -m http.server -d build >@stdout 2>@stderr] w]
 }
 
 while {true} {
     set pid [pid [runCommand]]
 
-    set status [exec inotifywait -e modify -e modify -e move -e create -e delete -q -r src include]
+    set status [exec inotifywait -e modify -e modify -e move -e create -e delete -q -r {*}$WATCHED_DIRS]
 
     # kill bg process and restart
     kill 9 $pid
