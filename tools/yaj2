@@ -4,6 +4,10 @@ import os
 import argparse
 from pathlib import Path
 
+def xjinja_fs_read(filename):
+    with open(filename) as fp:
+        return fp.read()
+
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
 parser.add_argument('-d', '--data', default = '{}')
@@ -27,4 +31,6 @@ elif args.format == 'yaml':
 template = env.get_template(os.path.basename(args.filename))
 
 with open(args.output, "w") as fp:
-    fp.write(template.render(**data))
+    fp.write(template.render(**data, fs = {
+        'read': xjinja_fs_read
+    }))
