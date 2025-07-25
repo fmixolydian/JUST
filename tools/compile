@@ -56,7 +56,7 @@ set ext_style {
 
 	SCRIPT {
 		color "yl"
-		extensions {.coffee .js}
+		extensions {.coffee .js .mjs}
 	}
 
 	FOLDER {
@@ -96,8 +96,14 @@ proc compile {SRC_PATH DEST_PATH INC_PATH {force_compile 0} {depth 0}} {
 		] $depth]
 
 	foreach src [glob $SRC_PATH/*] {
-		set dest [string map [list $SRC_PATH $DEST_PATH {*}$ext_convert] $src];
+		set dest [string map [list $SRC_PATH $DEST_PATH] $src];
 		set filename [string map [list $SRC_PATH ""] $src];
+
+		# replace file extentions
+		dict for {from to} $ext_convert {
+			if {[file extension $filename] == $from} {set dest [string map [list $from $to] $dest]}
+		}
+
 		set file_type "UNKNOWN"
 		set file_style "wl"
 
@@ -127,24 +133,23 @@ proc compile {SRC_PATH DEST_PATH INC_PATH {force_compile 0} {depth 0}} {
 			switch -nocase [file extension $src] {
 				# stylesheets
 				".sass" {
-					exec sass $src $dest -I include &
+					exec sass $src $dest -I include
 				}
 
 				".scss" {
-					exec scss $src $dest -I include &
+					exec scss $src $dest -I include
 				}
 
 				# pages
 				".j2" -
 				".html" -
 				".htm" {
-					exec tools/j2 $src -I $INC_PATH -o $dest &
+					exec tools/j2 $src -I $INC_PATH -o $dest
 				}
 
 				# coffeescript
 				".coffee" {
-					# WHYYYYY IS ITA DIRECTORY iòshuigihuQWGIPQUPRGHM9IC98I23YMY89Y2H35CUY P235IHQI5RGAEIHUIUO
-					exec coffee -co [file dirname $dest] $src &
+					exec coffee -co [file dirname $dest] $src
 				}
 
 				default {
@@ -159,6 +164,6 @@ proc compile {SRC_PATH DEST_PATH INC_PATH {force_compile 0} {depth 0}} {
 compile {*}$argv
 
 # jinja
-# u?????
+# umark
 # sass
 # tcl
