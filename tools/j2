@@ -6,26 +6,46 @@ import yaml
 import argparse
 from pathlib import Path
 
+FILE_FORMATS = {
+    'json': ['json', 'jsonc', 'jsonl'],
+    'yaml': ['yaml', 'yml'],
+    'sqlite': ['db', 'sqlite3', 'sqlite'],
+}
+
 def lambda_open(filename, effect):
     with open(filename, 'r') as fp:
         return effect(fp)
 
-def xjinja_read_raw(filename):
+def xjinja_load_raw(filename):
     return lambda_open("data/" + filename, lambda f : f.read())
 
-def xjinja_read_yaml(filename):
+def xjinja_load_yaml(filename):
     return lambda_open("data/" + filename, lambda f : yaml.safe_load(f))
 
-def xjinja_read_json(filename):
+def xjinja_load_json(filename):
     return lambda_open("data/" + filename, lambda f : json.load(f))
 
-def xjinja_read_sqlite(filename, table):
+def xjinja_load_sqlite(filename, table = None):
     import sqlite3
 
     with sqlite3.connect("data/" + filename) as db:
         db.row_factory = sqlite3.Row
         cur = db.cursor()
-        return cur.execute(f"SELECT * FROM {table}").fetchall()
+        if table:
+            return cur.execute(f"SELECT * FROM {table}").fetchall()
+        else:
+            return [cur.execute(f"SELECT * FROM {table}").fetchall() for table in cur.execute("SELECT name FROM sqlite_master")]
+
+def xjinja_load(filename, table = None):
+    ext = Path(filename).suffix
+    if ext in ['.json', '.jsonl', '.jsonc']:
+        return xjinja_load_json(filename)
+    elif ext in ['.yaml', '.yml']:
+        return xjinja_load_yaml(filename)
+    elif ext in ['.db', '.sqlite', '.sqlite3']:
+        return xjinja_load_sqlite(filename, table)
+    else:
+        return xjinja_load_raw(filename)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filename')
@@ -41,9 +61,4 @@ env = Environment(loader=ChoiceLoader([
 template = env.get_template(os.path.basename(args.filename))
 
 with open(args.output, "w") as fp:
-    fp.write(template.render(read = {
-        'json': xjinja_read_json,
-        'yaml': xjinja_read_yaml,
-        'sqlite': xjinja_read_sqlite,
-        'raw': xjinja_read_raw,
-    }))
+    fp.write(template.render(load = xjinja_load))

@@ -7,12 +7,31 @@
     <p>JUST is a tech stack and static website generator, combining many languages and engines already used in other large projects:</p>
     <ul>
         <li><strong>J</strong>inja - used for creating and templating webpages;</li>
+        <li><strong>U</strong>mark - a simple, yet powerful markup language;</li>
         <li><strong>S</strong>ASS - a styling language which supports variables and includes.</li>
         <li><strong>T</strong>cl - a powerful scripting language used for compiling assets.</li>
     </ul>
-    <small>pls dont ask me where the U comes from</small>
 
     <p>It also supports languages which compile to JavaScript, such as CoffeeScript.</p>
     <p>Also - you can easily customize the build system (i.e. which extentions get compiled and how) by editing the <code>compile.tcl</code> file.</p>
+
+    <h2>Exhibit I: Loading data from YAML</h2>
+
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Year</th>
+            <th>Score</th>
+        </tr>
+        
+        {% for movie in load("test.yaml") %}
+            <tr>
+                <td>{{movie.title}}</td>
+                <td>{{movie.year}}</td>
+                <td>{{movie.score}}</td>
+            </tr>
+        {% endfor %}
+
+    </table>
 
 {% endblock %}
